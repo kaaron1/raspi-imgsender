@@ -8,7 +8,6 @@ import ibmiotf.device
 import requests
 import json
 from requests_toolbelt.multipart import encoder
-from alchemyapi import AlchemyAPI
 
 #Bluemix IoT related variables
 organization = None
@@ -57,24 +56,13 @@ def storeImg (filename) :
 
     #send image as a post.
     r = requests.post(imgUploadServer, data=m, params=reqParams, headers={'Content-Type': m.content_type})
-    #r = requests.post(imgUploadServer, params=reqParams, files={'file': ('file', open(filename, 'rb'), contentType, contentDisposition)})
-    #r = requests.request('POST', imgUploadServer, data=reqData, files={filename: open(filename, 'rb')})
     if r.status_code != requests.codes.ok :
         print 'there was an error' + str(r.status_code)
         return None
     else :
         jsonData = json.loads(r.text)
-        #print jsonData
-        newURL = jsonData['attachements'][0]['url']
-        #return the url
-        #print 'image store results'
-        #print newURL
-        #the newURL is broken. Need to capture everything after the @
-        mySplit = newURL.split("@")
-	newURL = "https://" + mySplit[1]
-
+        newURL = jsonData['attachment']['url']
         return newURL
-
 
 
 def takePic() :
@@ -87,37 +75,10 @@ def takePic() :
     return filename
 
 
-
-def analyzePic(url) :
-    global apiKey
-    #r = requests.get("http://ic16-srv-managed.mybluemix.net/imgprocess?img=" + url)
-    #print(r)
-    #exit()
-
-    alchemyapi = AlchemyAPI()
-    #response = alchemyapi.URLGetRankedImageKeywords(url, apikey, 'json', forceShowAll=1, knowledgeGraph=1)
-    response = alchemyapi.imageTagging("url", url)
-
-    if response['status'] == 'OK':
-        print('## Response Object ##')
-        print(json.dumps(response, indent=4))
-
-        print('')
-        print('## Keywords ##')
-        for keyword in response['imageKeywords']:
-            print(keyword['text'], ' : ', keyword['score'])
-        print('')
-        return response['status']
-    else:
-        print('Error in image ranked  call: ', response['statusInfo'])    
-
-
-
-
 setConfigVariables()
 picInterval = int(PIC_INTERVAL)
 
-# Initialize the device client.
+# Initialize the device client for Bluemix IoT
 try:
     deviceOptions = {"org": organization,
     "type": deviceType,
@@ -129,9 +90,10 @@ except Exception as e:
     print("Caught exception connecting device: %s" % str(e))
     sys.exit()
 
-# Connect to send img
+# Connect to Bluemix IoT
 deviceCli.connect()
 
+#repeat until app is stopped (Ctrl-C)
 while True:
     filename = takePic()
 
