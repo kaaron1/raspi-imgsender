@@ -24,7 +24,7 @@ PIC_INTERVAL = None
 imgResolution = "1280x720" #Image resolution
 
 def setConfigVariables():
-    global imgUploadServer, PIC_INTERVAL, organization, deviceType, deviceId, authMetho, authToken, apiKey
+    global imgUploadServer, PIC_INTERVAL, organization, deviceType, deviceId, authMethod, authToken, apiKey
     parser = SafeConfigParser()
     parser.read('config.ini')
     PIC_INTERVAL = parser.get('img_config', 'picinterval')
@@ -36,7 +36,7 @@ def setConfigVariables():
     deviceId = parser.get('bluemix_config', 'device_id')
     authMethod = parser.get('bluemix_config', 'auth_method')
     authToken = parser.get('bluemix_config', 'auth_token')
-    apiKey = parser.get("bluemix_config', 'api_key')
+    apiKey = parser.get('bluemix_config', 'api_key')
 
 
 def imgStoreMonitor_callback(monitor):
@@ -148,14 +148,6 @@ while True:
 
     if not success:
         print("Not connected to IoTF")
-
-    #analysis = analyzePic(publicImgURL)
-
-    #data = { 'd' : {'img_analysis':analysis, 'status':'Img Analyzed'}}
-    #success = deviceCli.publishEvent("status", "json", data, qos=0, on_publish=myOnPublishCallback)
-
-    #if not success:
-        #print("Not connected to IoTF")
 
     time.sleep(picInterval)
 
