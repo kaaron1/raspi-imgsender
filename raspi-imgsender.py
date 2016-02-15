@@ -8,34 +8,21 @@ import ibmiotf.device
 import requests
 import json
 from requests_toolbelt.multipart import encoder
-
-#Bluemix IoT related variables
-organization = None
-deviceType = None
-deviceId = None
-authMethod = None
-authToken = None
-apiKey = None
+#IOT#import ic16_demo_iot as iot
 
 #Image related variables
+deviceId = None
 imgUploadServer = None
 PIC_INTERVAL = None
 imgResolution = "1280x720" #Image resolution
 
 def setConfigVariables():
-    global imgUploadServer, PIC_INTERVAL, organization, deviceType, deviceId, authMethod, authToken, apiKey
+    global imgUploadServer, PIC_INTERVAL
     parser = SafeConfigParser()
     parser.read('config.ini')
     PIC_INTERVAL = parser.get('img_config', 'picinterval')
     imgUploadServer = parser.get('img_config','imgstoreurl')
-
-    #load Bluemix config data
-    organization = parser.get('bluemix_config','organization')
-    deviceType = parser.get('bluemix_config', 'device_type')
-    deviceId = parser.get('bluemix_config', 'device_id')
-    authMethod = parser.get('bluemix_config', 'auth_method')
-    authToken = parser.get('bluemix_config', 'auth_token')
-    apiKey = parser.get('bluemix_config', 'api_key')
+    deviceId = parser.get('img_config','deviceid')
 
 
 def imgStoreMonitor_callback(monitor):
@@ -46,6 +33,7 @@ def imgStoreMonitor_callback(monitor):
 
 def storeImg (filename) :
     #store the image on a web server.
+    global deviceId, imgUploadServer
     e = encoder.MultipartEncoder(
         fields={ 'file': (filename, open(filename, 'rb'), 'image/jpeg')}
     )
@@ -62,7 +50,9 @@ def storeImg (filename) :
     else :
         jsonData = json.loads(r.text)
         newURL = jsonData['attachment']['url']
+        print 'Image sent. returned URL=' + newURL
         return newURL
+
 
 
 def takePic() :
@@ -79,19 +69,10 @@ setConfigVariables()
 picInterval = int(PIC_INTERVAL)
 
 # Initialize the device client for Bluemix IoT
-try:
-    deviceOptions = {"org": organization,
-    "type": deviceType,
-    "id": deviceId,
-    "auth-method": authMethod,
-    "auth-token": authToken}
-    deviceCli = ibmiotf.device.Client(deviceOptions)
-except Exception as e:
-    print("Caught exception connecting device: %s" % str(e))
-    sys.exit()
+#IOT#iot.setupIOTConnection()
 
 # Connect to Bluemix IoT
-deviceCli.connect()
+#IOT#iot.connectIOT()
 
 #repeat until app is stopped (Ctrl-C)
 while True:
@@ -99,17 +80,11 @@ while True:
 
     publicImgURL = storeImg(filename)
 
+    #IOT#If using IOT, format the data and send.
     #Create json data containing img url.
-    data = { 'd' : {'imgURL':publicImgURL, 'status':'Image Stored'}}
-
-    def myOnPublishCallback():
-        print("Confirmed event %s received by IoTF\n" % data)
-
-    #send data to IoT
-    success = deviceCli.publishEvent("status", "json", data, qos=0, on_publish=myOnPublishCallback)
-
-    if not success:
-        print("Not connected to IoTF")
+    #IOT#data = { 'd' : {'imgURL':publicImgURL, 'status':'Image Stored'}}
+    #send data to IBM Bluemix IOT
+    #IOT#iot.notifyIOT(data)
 
     time.sleep(picInterval)
 
