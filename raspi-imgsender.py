@@ -89,7 +89,7 @@ while True:
 
     publicImgURL = storeImg(filename)
 
-    #If using IOT, announce picture about to be taken
+    #If using IOT, announce picture taken and analyzing
     data = { 'd' : {'status':'Analyzing'}}
     #send data to IBM Bluemix IOT
     iot.notifyIOT(data)
