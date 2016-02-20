@@ -8,7 +8,7 @@ import ibmiotf.device
 import requests
 import json
 from requests_toolbelt.multipart import encoder
-#IOT#import ic16_demo_iot as iot
+import ic16_demo_iot as iot
 
 #Image related variables
 deviceId = None
@@ -69,22 +69,30 @@ setConfigVariables()
 picInterval = int(PIC_INTERVAL)
 
 # Initialize the device client for Bluemix IoT
-#IOT#iot.setupIOTConnection()
+iot.setupIOTConnection()
 
 # Connect to Bluemix IoT
-#IOT#iot.connectIOT()
+iot.connectIOT()
 
 #repeat until app is stopped (Ctrl-C)
 while True:
+
+    #If using IOT, announce picture about to be taken
+    data = { 'd' : {'status':'Click'}}
+    #send data to IBM Bluemix IOT
+    iot.notifyIOT(data)
+
+    # Wait for countdown
+    time.sleep(5)
+
     filename = takePic()
 
     publicImgURL = storeImg(filename)
 
-    #IOT#If using IOT, format the data and send.
-    #Create json data containing img url.
-    #IOT#data = { 'd' : {'imgURL':publicImgURL, 'status':'Image Stored'}}
+    #If using IOT, announce picture about to be taken
+    data = { 'd' : {'status':'Analyzing'}}
     #send data to IBM Bluemix IOT
-    #IOT#iot.notifyIOT(data)
+    iot.notifyIOT(data)
 
-    time.sleep(picInterval)
 
+    time.sleep(picInterval - 5)
