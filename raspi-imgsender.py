@@ -4,7 +4,7 @@ import time
 from ConfigParser import SafeConfigParser
 import sys
 import uuid
-import ibmiotf.device
+#IOT#import ibmiotf.device
 import requests
 import json
 from requests_toolbelt.multipart import encoder
@@ -15,14 +15,16 @@ deviceId = None
 imgUploadServer = None
 PIC_INTERVAL = None
 imgResolution = "1280x720" #Image resolution
+app_key = None
 
 def setConfigVariables():
-    global imgUploadServer, PIC_INTERVAL
+    global imgUploadServer, PIC_INTERVAL, app_key
     parser = SafeConfigParser()
     parser.read('config.ini')
     PIC_INTERVAL = parser.get('img_config', 'picinterval')
     imgUploadServer = parser.get('img_config','imgstoreurl')
     deviceId = parser.get('img_config','deviceid')
+    app_key = parser.get('img_config', 'app_key')
 
 
 def imgStoreMonitor_callback(monitor):
@@ -33,12 +35,12 @@ def imgStoreMonitor_callback(monitor):
 
 def storeImg (filename) :
     #store the image on a web server.
-    global deviceId, imgUploadServer
+    global deviceId, imgUploadServer, app_key
     e = encoder.MultipartEncoder(
         fields={ 'file': (filename, open(filename, 'rb'), 'image/jpeg')}
     )
     m = encoder.MultipartEncoderMonitor(e, imgStoreMonitor_callback)
-    reqParams = {'value':filename,'name':filename, 'filename':filename, 'st_filename':filename,'st_deviceid':deviceId}
+    reqParams = {'value':filename,'name':filename, 'filename':filename, 'st_filename':filename,'st_deviceid':deviceId, 'app_key':app_key}
     contentType = 'image/jpeg'
     contentDisposition = 'form-data'
 
