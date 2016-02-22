@@ -4,7 +4,7 @@ import time
 from ConfigParser import SafeConfigParser
 import sys
 import uuid
-#IOT#import ibmiotf.device
+import ibmiotf.device
 import requests
 import json
 from requests_toolbelt.multipart import encoder
