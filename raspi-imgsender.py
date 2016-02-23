@@ -8,7 +8,6 @@ import ibmiotf.device
 import requests
 import json
 from requests_toolbelt.multipart import encoder
-import ic16_demo_iot as iot
 
 #Image related variables
 deviceId = None
@@ -17,14 +16,32 @@ PIC_INTERVAL = None
 imgResolution = "1280x720" #Image resolution
 app_key = None
 
+#Bluemix IoT related variables
+organization = None
+deviceType = None
+deviceId = None
+authMethod = None
+authToken = None
+apiKey = None
+
+iot = None
+
 def setConfigVariables():
-    global imgUploadServer, PIC_INTERVAL, app_key
+    global imgUploadServer, PIC_INTERVAL, app_key, organization, deviceType, deviceId, authMethod, authToken, apiKey
     parser = SafeConfigParser()
     parser.read('config.ini')
     PIC_INTERVAL = parser.get('img_config', 'picinterval')
     imgUploadServer = parser.get('img_config','imgstoreurl')
     deviceId = parser.get('img_config','deviceid')
     app_key = parser.get('img_config', 'app_key')
+	
+	#load Bluemix config data
+    organization = parser.get('bluemix_config','organization')
+    deviceType = parser.get('bluemix_config', 'device_type')
+    deviceId = parser.get('bluemix_config', 'device_id')
+    authMethod = parser.get('bluemix_config', 'auth_method')
+    authToken = parser.get('bluemix_config', 'auth_token')
+    apiKey = parser.get('bluemix_config', 'api_key')
 
 
 def imgStoreMonitor_callback(monitor):
@@ -66,23 +83,17 @@ def takePic() :
     os.system("fswebcam -r " + imgResolution + " " + filename)
     return filename
 
+def myCommandCallback(cmd):
+    print("Command received: %s" % cmd.data)
+    if cmd.command == "takePicture":
+      processPicture()
 
-setConfigVariables()
-picInterval = int(PIC_INTERVAL)
-
-# Initialize the device client for Bluemix IoT
-iot.setupIOTConnection()
-
-# Connect to Bluemix IoT
-iot.connectIOT()
-
-#repeat until app is stopped (Ctrl-C)
-while True:
-
+def processPicture():
+    global iot
     #If using IOT, announce picture about to be taken
-    data = { 'd' : {'status':'Click'}}
+    data = { 'd' : {'status':'executing take picture cmd'}}
     #send data to IBM Bluemix IOT
-    iot.notifyIOT(data)
+    notifyIOT(data)
 
     # Wait for countdown
     time.sleep(5)
@@ -92,9 +103,66 @@ while True:
     publicImgURL = storeImg(filename)
 
     #If using IOT, announce picture taken and analyzing
-    data = { 'd' : {'status':'Analyzing'}}
+    data = { 'd' : {'status':'Pic taken and sent for analysis'}}
     #send data to IBM Bluemix IOT
-    iot.notifyIOT(data)
+    notifyIOT(data)
 
 
-    time.sleep(picInterval - 5)
+
+######### IoT Methods
+def setupIOTConnection () :
+    #get access to the global variables.
+    global iot, organization, deviceType, deviceId, authMethod, authToken, apiKey
+    
+    # Initialize the device client for Bluemix IoT
+    try:
+        deviceOptions = {"org": organization,
+        "type": deviceType,
+        "id": deviceId,
+        "auth-method": authMethod,
+        "auth-token": authToken}
+        iot = ibmiotf.device.Client(deviceOptions)
+    except Exception as e:
+        print("Caught exception connecting device: %s" % str(e))
+        sys.exit()
+
+
+def connectIOT():
+    global iot
+    # Connect to Bluemix IoT
+    iot.connect()
+
+def notifyIOT(data) :
+    global iot
+	
+    def myOnPublishCallback() :
+        print("Confirmed event %s received by IoTF\n" % data)
+
+    #send data to IoT
+    success = iot.publishEvent("status", "json", data, qos=0, on_publish=myOnPublishCallback)
+
+    if not success:
+        print("Not connected to IoTF")
+
+
+setConfigVariables()
+picInterval = int(PIC_INTERVAL)
+
+# Initialize the device client for Bluemix IoT
+setupIOTConnection()
+
+# Connect to Bluemix IoT
+connectIOT()
+
+# Set callback for commands. This will pick up any commands that are sent to this device.
+iot.commandCallback = myCommandCallback
+
+#repeat until app is stopped (Ctrl-C)
+while True:
+    data = { 'd' : { 'status': 'Waiting for command'} }
+    notifyIOT( data)
+    time.sleep(10)
+
+	
+# Disconnect the device.
+iot.disconnect()	
