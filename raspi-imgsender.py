@@ -7,6 +7,7 @@ import uuid
 import ibmiotf.device
 import requests
 import json
+import thread
 from requests_toolbelt.multipart import encoder
 
 #Image related variables
@@ -64,14 +65,13 @@ def storeImg (filename) :
     #send image as a post.
     r = requests.post(imgUploadServer, data=m, params=reqParams, headers={'Content-Type': m.content_type})
     if r.status_code != requests.codes.ok :
-        print 'there was an error' + str(r.status_code)
+        print 'There was an error sending the image to be analyzed. Error=' + str(r.status_code)
         return None
     else :
         jsonData = json.loads(r.text)
-        newURL = jsonData['attachment']['url']
+        newURL = jsonData['img_url']
         print 'Image sent. returned URL=' + newURL
         return newURL
-
 
 
 def takePic() :
@@ -83,6 +83,7 @@ def takePic() :
     os.system("fswebcam -r " + imgResolution + " " + filename)
     return filename
 
+# Callback method that listens for IOT commands. In this case, it will wait for a command to take the picture.
 def myCommandCallback(cmd):
     print("Command received: %s" % cmd.data)
     if cmd.command == "takePicture":
@@ -104,7 +105,6 @@ def processPicture():
 
     #If using IOT, announce picture taken and analyzing
     data = { 'd' : {'status':'Pic taken and sent for analysis'}}
-    #send data to IBM Bluemix IOT
     notifyIOT(data)
 
 
@@ -123,28 +123,34 @@ def setupIOTConnection () :
         "auth-token": authToken}
         iot = ibmiotf.device.Client(deviceOptions)
     except Exception as e:
-        print("Caught exception connecting device: %s" % str(e))
+        print("Caught exception connecting device to IOT: %s" % str(e))
         sys.exit()
 
 
-def connectIOT():
-    global iot
-    # Connect to Bluemix IoT
-    iot.connect()
-
-def notifyIOT(data) :
+# DO NOT use this method directly. Use notifyIOT(data) instead.
+# This method will be called from notifyIOT in a threaded model.
+def notifyIOT_Threaded(data) :
     global iot
 	
     def myOnPublishCallback() :
         print("Confirmed event %s received by IoTF\n" % data)
 
-    #send data to IoT
+    #send data to IoT 
     success = iot.publishEvent("status", "json", data, qos=0, on_publish=myOnPublishCallback)
 
     if not success:
-        print("Not connected to IoTF")
+        print("Could not connect to IoTF")
 
 
+def notifyIOT(data) :
+    try :
+        thread.start_new_thread( notifyIOT_Threaded, (data, ) )
+
+    except :
+        print 'Error: unable to start thread to Notify IOT!'
+
+
+# ### Now run the app ##
 setConfigVariables()
 picInterval = int(PIC_INTERVAL)
 
@@ -152,7 +158,7 @@ picInterval = int(PIC_INTERVAL)
 setupIOTConnection()
 
 # Connect to Bluemix IoT
-connectIOT()
+iot.connect()
 
 # Set callback for commands. This will pick up any commands that are sent to this device.
 iot.commandCallback = myCommandCallback
@@ -161,7 +167,7 @@ iot.commandCallback = myCommandCallback
 while True:
     data = { 'd' : { 'status': 'Waiting for command'} }
     notifyIOT( data)
-    time.sleep(10)
+    time.sleep(5)
 
 	
 # Disconnect the device.
